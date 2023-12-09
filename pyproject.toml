@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pxctl"
-version = "0.0.2"
+version = "0.0.3"
 authors = [
   { name="Oleg Khretinin", email="snail.incm@gmail.com" },
 ]
@@ -15,7 +15,7 @@ dependencies = ["tabulate"]
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
-    "Operating System :: OS Independent",
+    "Operating System :: POSIX",
 ]
 
 [project.urls]
