@@ -5,7 +5,7 @@ import os
 import sys
 from time import sleep
 
-cur_dir = os.path.realpath(os.path.dirname('.'))
+cur_dir = os.path.realpath(os.path.dirname(os.path.abspath(__file__)))
 SRC_DIR = os.path.realpath(cur_dir)
 
 if os.path.isdir(SRC_DIR):
