@@ -1,0 +1,26 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pxctl"
+version = "0.0.1"
+authors = [
+  { name="Oleg Khretinin", email="snail.incm@gmail.com" },
+]
+description = "Command line tool for Picaso Designer X PRO"
+readme = "README.md"
+requires-python = ">=3.7"
+dependencies = ["tabulate"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+Homepage = "https://github.com/olegh/pxctl"
+Issues = "https://github.com/olegh/pxctl/issues"
+
+[project.scripts]
+pxctl = "pxctl.pxctl:main"
