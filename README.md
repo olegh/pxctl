@@ -1,4 +1,4 @@
-Picaso Designer X PRO command line tool
+Picaso3d Designer X PRO command line tool
 ========================
 
 Simple command line tool to monitor 3d-printer state.
