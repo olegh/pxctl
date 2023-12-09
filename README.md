@@ -55,7 +55,8 @@ Run hooks when printer success
 Get printer status at json format
 
 ```bash 
- pxctl show --json"
+ pxctl show --json
+
  ```
 
 ---------------
