@@ -1,14 +1,14 @@
 init:
-	pip install -r requirements.txt
-
-clean:
-	rm -rf ./dist
+	pip3 install -r requirements.txt
 
 build:
 	python3 -m build
 
+clean:
+	rm -rf ./dist
+
 install:
-	pip install .
+	pip3 install .
 
 test_publish:
 	python3 -m twine upload --repository testpypi dist/*

@@ -59,4 +59,9 @@ Get printer status at json format
 
  ```
 
+## How to build
+```bash
+make init
+make build
+```
 ---------------
