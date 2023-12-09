@@ -13,7 +13,7 @@ setup(
     version='0.1.0',
     description='Picaso Designer X PRO ctl',
     long_description=readme,
-    url='',
+    url='https://github.com/olegh/pxctl',
     license=license,
     install_requires=['tabulate'],
     zip_safe=False,
