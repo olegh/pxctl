@@ -1,1 +1,3 @@
 tabulate
+build
+twine
