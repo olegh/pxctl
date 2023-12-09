@@ -49,7 +49,7 @@ Make printer stops to beep
 Run hooks when printer success or failure
 
 ```bash
- pxctl show --on-success='echo 10' --on-failure='touch /tmp/pxctl_printer_failed'
+ pxctl show --on-success='echo 10'
  ```
 
 Get printer status at json format
