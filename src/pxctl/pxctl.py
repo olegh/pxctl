@@ -79,7 +79,6 @@ def main():
     parser.add_argument("-a", "--address", type=str, help="specify printer IPv4 address")
     parser.add_argument("-c", "--continuous", help="keep printing with period example", action="store_true")
     parser.add_argument("-s", "--on-success", type=str, help="run hook when done printing")
-    parser.add_argument("-f", "--on-failure", type=str, help="run hook when failed")
     args = parser.parse_args()
 
     if args.json:
@@ -110,7 +109,7 @@ def main():
     pxctl discover --json
     pxctl beep_on --address=192.168.1.35
     pxctl beep_off
-    pxctl show --on-success='echo 10' --on-failure='touch /tmp/pxctl_printer_failed'
+    pxctl show --on-success='echo 10'
     pxctl show --json"
 ''')
 

@@ -79,7 +79,7 @@ class PrinterService:
             return "PRINTING"
 
         if code == 2:
-            return "FAILED"
+            return "WAITING"
 
         return "UNKNOWN"
 
