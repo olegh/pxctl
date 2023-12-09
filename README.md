@@ -46,7 +46,7 @@ Make printer stops to beep
  pxctl beep_off
  ```
 
-Run hooks when printer success or failure
+Run hooks when printer success
 
 ```bash
  pxctl show --on-success='echo 10'
