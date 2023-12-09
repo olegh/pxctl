@@ -34,7 +34,7 @@ def show(layout_service, args):
     address = get_address(args)
     should_repeat = args.continuous
 
-    notifications = Notifications(args.on_success, args.on_failure)
+    notifications = Notifications(args.on_success)
 
     with connect(address) as connection:
         print_service = PrinterService(connection)
