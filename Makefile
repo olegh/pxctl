@@ -1,3 +1,7 @@
+.PHONY: all init build install clean test_publish publish
+
+all: init build install
+
 init:
 	pip3 install -r requirements.txt
 
