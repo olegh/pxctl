@@ -5,15 +5,15 @@ import os
 import sys
 from time import sleep
 
+from pxctl.notifications import Notifications
+from pxctl.printer_service import Connection, PrinterService
+from layout import JsonLayout, TableLayout
+
 cur_dir = os.path.realpath(os.path.dirname(os.path.abspath(__file__)))
 SRC_DIR = os.path.realpath(cur_dir)
 
 if os.path.isdir(SRC_DIR):
     sys.path.insert(0, SRC_DIR)
-
-from notifications import *
-from printer import *
-from layout import *
 
 
 def get_address(args) -> str:
@@ -36,7 +36,7 @@ def show(layout_service, args):
 
     notifications = Notifications(args.on_success)
 
-    with connect(address) as connection:
+    with Connection(address) as connection:
         print_service = PrinterService(connection)
 
         while True:
@@ -57,14 +57,14 @@ def discover(layout_service, args):
 
 def beep_on(args):
     address = get_address(args)
-    with connect(address) as connection:
+    with Connection(address) as connection:
         printer_service = PrinterService(connection)
         printer_service.beep_on()
 
 
 def beep_off(args):
     address = get_address(args)
-    with connect(address) as connection:
+    with Connection(address) as connection:
         printer_service = PrinterService(connection)
         printer_service.beep_off()
 
