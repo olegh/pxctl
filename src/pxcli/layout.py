@@ -23,7 +23,7 @@ class TableLayout:
             table = [
                 [
                     address,
-                    info.state,
+                    info.state.name,
                     info.current_task_file,
                     round(info.progress_percents, 1),
                     round(info.left_extruder_temperature, 1),
@@ -46,7 +46,7 @@ class TableLayout:
         for printer in printers:
             table.append(
                 [
-                    printer.printer_type,
+                    printer.printer_type.name,
                     printer.ip_address,
                     printer.serial,
                     printer.left_extruder_profile,
@@ -64,7 +64,7 @@ class JsonLayout:
         if connection_ok:
             dto = {
                 "address": address,
-                "state": info.state,
+                "state": info.state.name,
                 "task_name": info.current_task_file,
                 "progress_percent": round(info.progress_percents, 1),
                 "left_extruder_temperature": round(info.left_extruder_temperature, 1),
@@ -87,6 +87,7 @@ class JsonLayout:
             dto.append(
                 {
                     "serial": printer.serial,
+                    "model": printer.printer_type.name,
                     "ip_address": printer.ip_address,
                     "left_extruder_profile": printer.left_extruder_profile,
                     "right_extruder_profile": printer.right_extruder_profile,
