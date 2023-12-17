@@ -20,9 +20,10 @@ class NetworkUtils:
             interface_data: dict = netifaces.ifaddresses(interface)
             for data_values in interface_data.values():
                 for data in data_values:
-                    if not(netmask:=data.get("netmask")):
+                    if not data.get("netmask"):
                         continue
-                    if not(broadcast_addr:=data.get("broadcast")):
+                    broadcast_addr = data.get("broadcast")
+                    if not broadcast_addr:
                         continue
                     if not isinstance(ipaddress.ip_address(broadcast_addr), ipaddress.IPv4Address):
                         continue
