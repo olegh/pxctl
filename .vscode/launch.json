@@ -1,0 +1,28 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "PxCLI: Discover",
+            "type": "python",
+            "request": "launch",
+            "program": "main.py",
+            "args": ["discover"],
+            "cwd": "${workspaceFolder}/src/pxcli",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
+            "name": "PxCLI: show continuous",
+            "type": "python",
+            "request": "launch",
+            "program": "main.py",
+            "args": ["show", "--continuous"],
+            "cwd": "${workspaceFolder}/src/pxcli",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        }
+    ]
+}
