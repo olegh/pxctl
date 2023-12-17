@@ -1,7 +1,7 @@
 import subprocess
 import sys
 
-from .printer import PrintingInfo
+from .printer_service import PrinterState
 
 
 class Notifications:
@@ -9,7 +9,7 @@ class Notifications:
         self.__notified_latch = False
         self.__on_success_hook = on_success_hook
 
-    def update_state(self, info: PrintingInfo | None = None):
+    def update_state(self, info: PrinterState | None = None):
         if self.__notified_latch:
             return
 

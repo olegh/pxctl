@@ -4,11 +4,11 @@ from typing import List
 
 from tabulate import tabulate
 
-from pxctl.printer import PrintingInfo, DiscoverInfo
+from pxctl.printer_service import PrinterState, Printer
 
 
 class TableLayout:
-    def print_info(self, address: str, info: PrintingInfo | None = None):
+    def print_info(self, address: str, info: PrinterState | None = None):
         headers = [
             "Address",
             "State",
@@ -38,7 +38,7 @@ class TableLayout:
         os.system('cls' if os.name == 'nt' else 'clear')
         print(tabulate(table, headers=headers, tablefmt="github"))
 
-    def print_discover(self, printers: List[DiscoverInfo]):
+    def print_discover(self, printers: List[Printer]):
         headers = ["Printer type", "Address", "Serial", "Left profile", "Right profile"]
 
         table = []
@@ -58,7 +58,7 @@ class TableLayout:
 
 
 class JsonLayout:
-    def print_info(self, address: str, info_optional: tuple[bool, PrintingInfo]):
+    def print_info(self, address: str, info_optional: tuple[bool, PrinterState]):
         connection_ok, info = info_optional
 
         if connection_ok:
@@ -80,7 +80,7 @@ class JsonLayout:
 
         print(json.dumps(dto))
 
-    def print_discover(self, printers: List[DiscoverInfo]):
+    def print_discover(self, printers: List[Printer]):
         dto = []
 
         for printer in printers:

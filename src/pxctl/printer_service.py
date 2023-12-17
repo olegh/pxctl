@@ -7,66 +7,15 @@ from typing import List, Tuple
 
 from .utils import NetworkUtils, MagicPicasoConverters
 from .enums import NetPrinterState, PrinterType
-
-
-class Connection:
-    def __init__(self, address: str, port: int = 54321):
-        self.__address = address
-        self.__port = port
-        self.__socket: socket.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-
-    def __enter__(self):
-        self.__socket.setblocking(False)
-        self.__socket.bind(("0.0.0.0", 0))
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        if self.__socket is not None:
-            self.__socket.close()
-
-    def send(self, buf: bytes) -> int:
-        return self.__socket.sendto(buf, (self.__address, self.__port))
-
-    def recv(self) -> bytes | None:
-        read_ready, _, _ = select.select([self.__socket], [], [], 0.3)
-        if len(read_ready) != 1:
-            return None
-        buf, _ = self.__socket.recvfrom(1024)
-        if len(buf) <= 0:
-            return None
-        return buf
-
-
-@dataclass
-class PrintingInfo:
-    state: NetPrinterState
-    left_extruder_temperature: float
-    right_extruder_temperature: float
-    table_temperature: float
-    current_task_file: str
-    is_printing: bool
-    is_ready: bool
-    progress_percents: float
-
-
-@dataclass
-class DiscoverInfo:
-    protocol_version: int
-    sub_version: int
-    low_hw_version: int
-    hi_hw_version: int
-    printer_type: PrinterType
-    serial: str
-    ip_address: str
-    left_extruder_profile: str
-    right_extruder_profile: str
+from .connection import Connection
+from .structs import PrinterState, Printer
 
 
 class PrinterService:
     def __init__(self, connection: Connection):
         self.__connection = connection
 
-    def get_printing_info(self) -> PrintingInfo | None:
+    def get_printing_info(self) -> PrinterState | None:
         info_cmd = b"\x01\x00\x01\x00\x00\x00\x08\x00"
         recv_format = "8xB7x?255sh7xB12xff4xff28x"
 
@@ -75,7 +24,6 @@ class PrinterService:
         data = self.__connection.recv()
         if not data:
             return None
-
         (
             code,
             is_ready_to_print,
@@ -89,7 +37,7 @@ class PrinterService:
         ) = struct.unpack(recv_format, data)
         task_name = current_task_file_bytes.decode("utf-8").strip("\x00")
 
-        return PrintingInfo(
+        return PrinterState(
             state=NetPrinterState(code),
             left_extruder_temperature=left_extruder_temperature,
             right_extruder_temperature=right_extruder_temperature,
@@ -101,7 +49,7 @@ class PrinterService:
         )
 
     @staticmethod
-    def discover_printers() -> List[DiscoverInfo]:
+    def discover_printers() -> List[Printer]:
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
         broadcast_addresses = NetworkUtils.get_all_ipv4_broadcast_addresses()
@@ -135,7 +83,7 @@ class PrinterService:
                     right_extruder_profile,
                 ) = struct.unpack("1c1c6x1c1c3x20x20s47x40s10x40sx", buf)
                 discover_result.append(
-                    DiscoverInfo(
+                    Printer(
                         protocol_version=int.from_bytes(protocol_version),
                         sub_version=int.from_bytes(sub_version),
                         low_hw_version=int.from_bytes(low_hw_version),
