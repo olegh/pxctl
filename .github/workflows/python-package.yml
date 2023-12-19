@@ -39,3 +39,7 @@ jobs:
       run: |
         make init
         make build
+    - name: Wheel install and run
+      run: |
+        pip install .
+        pxctl -h
