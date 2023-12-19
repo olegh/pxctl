@@ -4,10 +4,10 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pxctl"
-version = "0.1.0-rc1"
+version = "0.1.0-rc2"
 authors = [
-  { name="Oleg Khretinin", email="snail.incm@gmail.com" },
-  { name="github.com/ttwoti"}
+    {name = "github.com/olegh"},
+    {name = "github.com/ttwoti"},
 ]
 description = "Command line tool for Picaso3d printers"
 readme = "README.md"
