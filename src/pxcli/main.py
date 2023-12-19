@@ -8,6 +8,7 @@ from time import sleep
 
 from pxctl.notifications import Notifications
 from pxctl.printer_service import Connection, PrinterService
+from .layout import JsonLayout, TableLayout
 
 cur_dir = os.path.realpath(os.path.dirname(os.path.abspath(__file__)))
 SRC_DIR = os.path.realpath(cur_dir)
@@ -15,7 +16,6 @@ SRC_DIR = os.path.realpath(cur_dir)
 if os.path.isdir(SRC_DIR):
     sys.path.insert(0, SRC_DIR)
 
-from layout import JsonLayout, TableLayout
 
 
 def signal_handler(sig, frame):
