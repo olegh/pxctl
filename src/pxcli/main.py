@@ -8,7 +8,7 @@ from time import sleep
 
 from pxctl.notifications import Notifications
 from pxctl.printer_service import Connection, PrinterService
-from layout import JsonLayout, TableLayout
+from .layout import JsonLayout, TableLayout
 
 cur_dir = os.path.realpath(os.path.dirname(os.path.abspath(__file__)))
 SRC_DIR = os.path.realpath(cur_dir)

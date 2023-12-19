@@ -4,23 +4,36 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pxctl"
-version = "0.0.3"
+version = "0.1.0-rc1"
 authors = [
   { name="Oleg Khretinin", email="snail.incm@gmail.com" },
+  { name="github.com/ttwoti"}
 ]
-description = "Command line tool for Picaso Designer X PRO"
+description = "Command line tool for Picaso3d printers"
 readme = "README.md"
 requires-python = ">=3.7"
-dependencies = ["tabulate"]
+dependencies = [
+    "tabulate",
+    "twine",
+    "netifaces"
+]
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
     "Operating System :: POSIX",
 ]
 
+[tool.hatch.build.targets.wheel]
+only-packages = true
+only-include = [
+  "src/pxcli",
+  "src/pxctl"
+]
+sources = ["src"]
+
 [project.urls]
 Homepage = "https://github.com/olegh/pxctl"
 Issues = "https://github.com/olegh/pxctl/issues"
 
 [project.scripts]
-pxctl = "pxctl.pxctl:main"
+pxctl = "pxcli:main.main"
