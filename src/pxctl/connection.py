@@ -20,7 +20,7 @@ class Connection:
     def send(self, buf: bytes) -> int:
         return self.__socket.sendto(buf, (self.__address, self.__port))
 
-    def recv(self) -> bytes | None:
+    def recv(self) -> bytes:
         read_ready, _, _ = select.select([self.__socket], [], [], 0.3)
         if len(read_ready) != 1:
             return None
