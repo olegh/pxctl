@@ -58,10 +58,9 @@ class TableLayout:
 
 
 class JsonLayout:
-    def print_info(self, address: str, info_optional: tuple[bool, PrinterState]):
-        connection_ok, info = info_optional
+    def print_info(self, address: str, info: PrinterState | None = None):
 
-        if connection_ok:
+        if info:
             dto = {
                 "address": address,
                 "state": info.state.name,
