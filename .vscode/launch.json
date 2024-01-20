@@ -12,6 +12,7 @@
             "args": ["discover"],
             "cwd": "${workspaceFolder}/src/pxcli",
             "console": "integratedTerminal",
+            "env": {"PYTHONPATH": "${workspaceFolder}/src"},
             "justMyCode": true
         },
         {
@@ -21,6 +22,7 @@
             "program": "main.py",
             "args": ["show", "--continuous"],
             "cwd": "${workspaceFolder}/src/pxcli",
+            "env": {"PYTHONPATH": "${workspaceFolder}/src"},
             "console": "integratedTerminal",
             "justMyCode": true
         }

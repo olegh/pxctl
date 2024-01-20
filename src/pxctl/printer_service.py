@@ -17,7 +17,9 @@ class PrinterService:
 
     def get_printing_info(self) -> PrinterState | None:
         info_cmd = b"\x01\x00\x01\x00\x00\x00\x08\x00"
-        recv_format = "8xB7x?255sh7xB12xff4xff28x"
+        recv_format = "8xB7x?255sh1xf15xff4xff28x"
+
+        
 
         self.__connection.send(info_cmd)
 
@@ -35,6 +37,7 @@ class PrinterService:
             table_temperature,
             _,
         ) = struct.unpack(recv_format, data)
+        open("debug_dump.bin", "wb").write(data)
         task_name = current_task_file_bytes.decode("utf-8").strip("\x00")
 
         return PrinterState(
@@ -45,7 +48,7 @@ class PrinterService:
             current_task_file=task_name,
             is_printing=printing_marker != 0,
             is_ready=is_ready_to_print,
-            progress_percents=progress / 2.0,
+            progress_percents=progress,
         )
 
     @staticmethod
