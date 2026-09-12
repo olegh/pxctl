@@ -4,6 +4,7 @@ from typing import List
 from tabulate import tabulate
 
 from pxctl.printer_service import PrinterState, Printer
+from pxctl.structs import PrintList
 
 from .card import StatusCard, clear_screen
 
@@ -24,6 +25,9 @@ class CardLayout:
         if clear:
             clear_screen()
         print(self.__card.render(address, info, printer), flush=True)
+
+    def print_tasks(self, printlists: List[PrintList], current_task: str = ""):
+        print(self.__card.render_tasks(printlists, current_task), flush=True)
 
     def print_discover(
         self,
@@ -84,6 +88,17 @@ class TableLayout:
 
         if clear:
             clear_screen()
+        print(tabulate(table, headers=headers, tablefmt="github"), flush=True)
+
+    def print_tasks(self, printlists: List[PrintList], current_task: str = ""):
+        headers = ["Print list", "Task", "Size (bytes)", "Current"]
+        table = []
+        for printlist in printlists:
+            for task in printlist.tasks:
+                current = task.name == current_task.rsplit(".", 1)[0]
+                table.append(
+                    [printlist.name, task.name, task.size_bytes, "*" if current else ""]
+                )
         print(tabulate(table, headers=headers, tablefmt="github"), flush=True)
 
     def print_discover(
@@ -151,6 +166,25 @@ class JsonLayout:
                 "state": "NOT_CONNECTED",
             }
 
+        print(json.dumps(dto), flush=True)
+
+    def print_tasks(self, printlists: List[PrintList], current_task: str = ""):
+        dto = [
+            {
+                "name": printlist.name,
+                "guid": printlist.guid,
+                "tasks": [
+                    {
+                        "name": task.name,
+                        "guid": task.guid,
+                        "size_bytes": task.size_bytes,
+                        "is_current": task.name == current_task.rsplit(".", 1)[0],
+                    }
+                    for task in printlist.tasks
+                ],
+            }
+            for printlist in printlists
+        ]
         print(json.dumps(dto), flush=True)
 
     def print_discover(

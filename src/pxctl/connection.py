@@ -20,8 +20,10 @@ class Connection:
     def send(self, buf: bytes) -> int:
         return self.__socket.sendto(buf, (self.__address, self.__port))
 
-    def recv(self) -> bytes | None:
-        read_ready, _, _ = select.select([self.__socket], [], [], 0.3)
+    DEFAULT_TIMEOUT = 0.3
+
+    def recv(self, timeout: float = DEFAULT_TIMEOUT) -> bytes | None:
+        read_ready, _, _ = select.select([self.__socket], [], [], timeout)
         if len(read_ready) != 1:
             return None
         buf, _ = self.__socket.recvfrom(1024)

@@ -19,6 +19,30 @@ class Extruder:
 
 
 @dataclass
+class Task:
+    """One model uploaded to the printer, as listed in a print list."""
+
+    name: str
+    """Task name. The firmware truncates it to 32 bytes, so long names arrive
+    clipped -- the official slicer shows them clipped too."""
+
+    guid: str
+    """Identifier the firmware assigns to the task."""
+
+    size_bytes: int
+    """Size of the stored task data."""
+
+
+@dataclass
+class PrintList:
+    """A named collection of tasks held on the printer."""
+
+    name: str
+    guid: str
+    tasks: List[Task] = field(default_factory=list)
+
+
+@dataclass
 class PrinterState:
     state: NetPrinterState
     status: NetPrinterStatus

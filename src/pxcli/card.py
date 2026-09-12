@@ -10,7 +10,7 @@ import sys
 from typing import List, Optional
 
 from pxctl.enums import NetPrinterStatus
-from pxctl.structs import Extruder, Printer, PrinterState
+from pxctl.structs import Extruder, PrintList, Printer, PrinterState, Task
 
 # Box drawing, with an ASCII fallback for terminals that cannot do UTF-8.
 _BORDERS_UNICODE = {
@@ -179,6 +179,65 @@ class StatusCard:
         return "\n".join(
             [self._paint(top, color)] + lines + [self._paint(bottom, color)]
         )
+
+    def render_tasks(
+        self,
+        printlists: List[PrintList],
+        current_task: str = "",
+    ) -> str:
+        """Draws the print lists and the tasks stored on the printer."""
+        chars = self._chars
+        top = chars["tl"] + chars["h"] * (_CARD_WIDTH + 2) + chars["tr"]
+        bottom = chars["bl"] + chars["h"] * (_CARD_WIDTH + 2) + chars["br"]
+
+        if not printlists:
+            return "\n".join(
+                [self._paint(top, _GREY),
+                 self._row(self._paint("no print lists reported", _DIM)),
+                 self._paint(bottom, _GREY)]
+            )
+
+        lines = []
+        for index, printlist in enumerate(printlists):
+            if index:
+                lines.append(self._row())
+            header = f"{printlist.name}  ({len(printlist.tasks)})"
+            lines.append(self._row(self._paint(header, _BOLD)))
+            lines.extend(self._task_rows(printlist.tasks, current_task))
+
+        return "\n".join([self._paint(top, _BLUE)] + lines + [self._paint(bottom, _BLUE)])
+
+    def _task_rows(self, tasks: List[Task], current_task: str) -> List[str]:
+        if not tasks:
+            return [self._row(self._paint("empty", _DIM))]
+
+        # The name the printer reports as current carries a .plgx suffix the
+        # task list does not use, so compare without it.
+        current = current_task.rsplit(".", 1)[0] if current_task else ""
+
+        rows = []
+        for task in tasks:
+            size = format_size(task.size_bytes)
+            room = _CARD_WIDTH - len(size) - 4
+            name = task.name if len(task.name) <= room else task.name[: room - 1] + "…"
+            marker = "▸" if self._chars is _BORDERS_UNICODE else ">"
+            if task.name == current:
+                prefix = self._paint(marker, _GREEN)
+                name = self._paint(name, _GREEN)
+            else:
+                prefix = " "
+            padding = _CARD_WIDTH - self._visible_width(name) - len(size) - 2
+            rows.append(f"{prefix} {name}{' ' * max(padding, 0)}{size}")
+        return [self._row(row) for row in rows]
+
+
+def format_size(size_bytes: int) -> str:
+    """Human-readable size, the way a file manager would show it."""
+    if size_bytes < 1024:
+        return f"{size_bytes} B"
+    if size_bytes < 1024 * 1024:
+        return f"{size_bytes / 1024:.0f} KB"
+    return f"{size_bytes / 1024 / 1024:.1f} MB"
 
 
 def clear_screen():

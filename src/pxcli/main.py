@@ -32,16 +32,21 @@ def resolve_printer(args):
     only the discovery response reports -- so it is fetched even when an
     explicit address is given, and simply left out if discovery finds nothing.
     """
+    # An explicit address is asked directly, so the command keeps working
+    # where discovery broadcasts are dropped.
+    if args.address:
+        return args.address, PrinterService.describe_printer(args.address)
+
     printers = PrinterService.discover_printers()
 
-    if args.address:
-        for printer in printers:
-            if printer.ip_address == args.address:
-                return args.address, printer
-        return args.address, None
-
     if not printers:
-        print("Printers not found, try set ip address manually", file=sys.stderr)
+        print(
+            "No printers answered the discovery broadcast.\n"
+            "Discovery relies on UDP broadcast, which some access points rate-limit "
+            "or drop; a printer that is reachable directly will still work.\n"
+            "Try again, or address it explicitly: pxctl show --address 192.0.2.10",
+            file=sys.stderr,
+        )
         sys.exit(-1)
 
     return printers[0].ip_address, printers[0]
@@ -63,6 +68,7 @@ def show(args):
     layout_service = get_layout(args)
     address, printer = resolve_printer(args)
     should_repeat = args.continuous
+    with_tasks = getattr(args, "tasks", False)
 
     notifications = Notifications(args.on_success)
 
@@ -74,6 +80,11 @@ def show(args):
             layout_service.print_info(
                 address, optional_info, printer, clear=should_repeat
             )
+            if with_tasks:
+                layout_service.print_tasks(
+                    print_service.get_printlists(),
+                    optional_info.current_task_file if optional_info else "",
+                )
             notifications.update_state(optional_info)
 
             if not should_repeat:
@@ -127,30 +138,98 @@ def beep(args):
         beep_off(address)
 
 
+def list_tasks(args):
+    """Shows the print lists and the models stored on the printer."""
+    layout_service = get_layout(args)
+    address = get_address(args)
+
+    with Connection(address) as connection:
+        printer_service = PrinterService(connection)
+        printlists = printer_service.get_printlists()
+        state = printer_service.get_printing_info()
+
+    layout_service.print_tasks(printlists, state.current_task_file if state else "")
+
+
 def printlist(args):
-    print("Not implemented yet", file=sys.stderr)
+    if args.operation == "list":
+        list_tasks(args)
+    else:
+        print("Not implemented yet", file=sys.stderr)
 
 
 def task(args):
-    print("Not implemented yet", file=sys.stderr)
+    if args.operation == "list":
+        list_tasks(args)
+    else:
+        print("Not implemented yet", file=sys.stderr)
 
 
 def execute(args):
     print("Not implemented yet", file=sys.stderr)
 
 
+EPILOG = """\
+Typical use:
+  pxctl show                       status card for the first printer found
+  pxctl show --tasks               status plus the models stored on the printer
+  pxctl show --continuous          redraw the card until interrupted
+  pxctl task list                  list the stored models
+  pxctl discover                   find every printer on the LAN
+  pxctl show --json                machine-readable output (every command takes --json)
+
+Addressing:
+  Without --address the printer is located with a UDP broadcast. Some access
+  points rate-limit or drop broadcasts; if discovery reports nothing, pass
+  --address to talk to the printer directly, which only uses unicast:
+    pxctl show --address 192.0.2.10
+
+Output formats:
+  default   a card drawn with terminal graphics, for a human reader
+  --table   one row per printer or task, for grep and awk
+  --json    structured output, the format to parse from a script or an agent
+
+Exit codes:
+  0  success
+  -1 no printer found, or a subcommand was called without an operation
+
+Notes for automated callers:
+  Temperatures are degrees Celsius, sizes are bytes, progress is a percentage.
+  The status field is a stable enum name (npsPrintDone, npsMainPrint, ...) and
+  status_description is its English label; prefer the enum for logic.
+  A task name reported as current carries a .plgx suffix that the task list
+  omits, so strip the extension before comparing.
+"""
+
+
 def main():
-    parser = argparse.ArgumentParser(prog="pxctl")
-    subparsers = parser.add_subparsers()
+    parser = argparse.ArgumentParser(
+        prog="pxctl",
+        description="Monitor and control a Picaso3D Designer X Pro over the network.",
+        epilog=EPILOG,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    subparsers = parser.add_subparsers(metavar="COMMAND")
 
     ADDRESS_HELP = "Please provide the IPv4 address of the printer. By default, the printer is discovered automatically on the local network."
     PRINTLIST_HELP = "Please provide the name of the print list. If there is only one print list, it will be used by default."
 
-    show_parser = subparsers.add_parser("show",
-                                        help="Print the details of the 3D printer state to the standard output. '%(prog)s show -h' for more details")
+    show_parser = subparsers.add_parser(
+        "show",
+        help="Show the printer state: status, temperatures, materials, progress.",
+        description="Shows a status card: serial, status, progress, both extruders "
+                    "with nozzle size and material, and the platform temperature.",
+        epilog="Examples:\n"
+               "  pxctl show\n"
+               "  pxctl show --tasks\n"
+               "  pxctl show --address 192.0.2.10 --json\n"
+               "  pxctl show --continuous --on-success='notify-send done'",
+        formatter_class=argparse.RawDescriptionHelpFormatter)
     show_parser.add_argument("-j", "--json", help="Output the information of printer state in JSON format.",
                              action="store_true")
     show_parser.add_argument("-a", "--address", type=str, help=ADDRESS_HELP)
+    show_parser.add_argument("-l", "--tasks", help="Also list the models stored on the printer.",
+                             action="store_true")
     show_parser.add_argument("-t", "--table", help="Output the printer state as a plain table instead of a card.",
                              action="store_true")
     show_parser.add_argument("-c", "--continuous",
@@ -161,8 +240,14 @@ def main():
                              metavar="BASH_SCRIPT")
     show_parser.set_defaults(mode="show")
 
-    beep_parser = subparsers.add_parser("beep",
-                                        help="Triggers the 3D printer to emit a series of beeps for identification purposes. '%(prog)s beep -h' for more details")
+    beep_parser = subparsers.add_parser(
+        "beep",
+        help="Make the printer beep, to tell it apart from others.",
+        description="Starts or stops the printer's identification beep.",
+        epilog="Examples:\n"
+               "  pxctl beep enable\n"
+               "  pxctl beep disable",
+        formatter_class=argparse.RawDescriptionHelpFormatter)
     beep_parser.add_argument("operation",
                              help="Enable or disable the printer's beeping function for identification. Example: '%(prog)s enable'",
                              nargs="?",
@@ -170,8 +255,17 @@ def main():
     beep_parser.add_argument("-a", "--address", type=str, help=ADDRESS_HELP)
     beep_parser.set_defaults(mode="beep")
 
-    discover_parser = subparsers.add_parser("discover",
-                                            help="Search for printers connected to the local network. '%(prog)s discover -h' for more details")
+    discover_parser = subparsers.add_parser(
+        "discover",
+        help="Find every printer on the local network.",
+        description="Broadcasts a discovery probe and reports every printer that answers, "
+                    "with its serial, address, nozzle sizes and loaded materials.",
+        epilog="Examples:\n"
+               "  pxctl discover\n"
+               "  pxctl discover --json\n"
+               "Discovery needs UDP broadcast; if it finds nothing, the printer may still "
+               "be reachable via 'pxctl show --address IP'.",
+        formatter_class=argparse.RawDescriptionHelpFormatter)
     discover_parser.add_argument("-j", "--json", help="Output the results of the printer discovery in JSON format.",
                                  action="store_true")
     discover_parser.add_argument("-t", "--table", help="Output the discovered printers as a plain table instead of cards.",
@@ -181,20 +275,40 @@ def main():
                                  action="store_true")
     discover_parser.set_defaults(mode="discover")
 
-    printlist_parser = subparsers.add_parser("printlist", aliases=["pl"],
-                                             help="create/delete/list print-lists, '%(prog)s printlist -h' for more details")
+    printlist_parser = subparsers.add_parser(
+        "printlist", aliases=["pl"],
+        help="List the print lists on the printer (create/delete not implemented).",
+        description="Lists the print lists held on the printer and the models in them.",
+        epilog="Examples:\n"
+               "  pxctl printlist list\n"
+               "  pxctl pl list --json\n"
+               "Only 'list' is implemented; create and delete are not yet supported.",
+        formatter_class=argparse.RawDescriptionHelpFormatter)
     printlist_parser.add_argument("operation",
-                                  help="You can either create with a specific NAME, delete by specifying the NAME, or list the existing print lists. Example: pxctl pl create my-print-list",
+                                  help="'list' shows the print lists and their models. 'create' and 'delete' are not implemented yet.",
                                   nargs="?",
                                   choices=("create", "delete", "list")
                                   )
     printlist_parser.add_argument("-n", "--name", help="Please provide a name for the print-list")
     printlist_parser.add_argument("-a", "--address", type=str, help=ADDRESS_HELP)
+    printlist_parser.add_argument("-j", "--json", help="Output the print lists in JSON format.",
+                                  action="store_true")
+    printlist_parser.add_argument("-t", "--table", help="Output the print lists as a plain table.",
+                                  action="store_true")
     printlist_parser.set_defaults(mode="printlist")
 
-    task_parser = subparsers.add_parser("task", help="create/delete/list tasks. '%(prog)s task -h' for more details")
+    task_parser = subparsers.add_parser(
+        "task",
+        help="List the models stored on the printer (create/delete not implemented).",
+        description="Lists the models uploaded to the printer, with their size and "
+                    "which one is currently selected.",
+        epilog="Examples:\n"
+               "  pxctl task list\n"
+               "  pxctl task list --json\n"
+               "Only 'list' is implemented; create and delete are not yet supported.",
+        formatter_class=argparse.RawDescriptionHelpFormatter)
     task_parser.add_argument("operation",
-                             help="Create task from FILE, remove task by NAME, or display all current tasks. Example: pxctl task create -f model.plgx",
+                             help="'list' shows the stored models. 'create' and 'delete' are not implemented yet.",
                              nargs="?",
                              choices=("create", "delete", "list")
                              )
@@ -203,10 +317,17 @@ def main():
                              help="The file path to the .plgx file, which will be uploaded to the 3D printer, should only be used for creating.")
     task_parser.add_argument("-p", "--printlist", type=str, help=PRINTLIST_HELP)
     task_parser.add_argument("-a", "--address", type=str, help=ADDRESS_HELP)
+    task_parser.add_argument("-j", "--json", help="Output the tasks in JSON format.",
+                             action="store_true")
+    task_parser.add_argument("-t", "--table", help="Output the tasks as a plain table.",
+                             action="store_true")
     task_parser.set_defaults(mode="task")
 
-    execute_parser = subparsers.add_parser("execute", aliases=['ex'],
-                                           help="Execute the start, pause, or resume operation with task '%(prog)s ex -h' for more details")
+    execute_parser = subparsers.add_parser(
+        "execute", aliases=["ex"],
+        help="Start, pause or resume a print (not implemented yet).",
+        description="Starts, pauses or resumes a print job. Not implemented yet.",
+        formatter_class=argparse.RawDescriptionHelpFormatter)
     execute_parser.add_argument("operation",
                                 help="Initiate printing using the NAME from the PRINTLIST or add a new one from FILE to PRINTLIST.\
                            Otherwise pause or resume the current task. Example: 'pxctl ex start -f model.plgx",

@@ -40,6 +40,32 @@ blue while printing, yellow when it is paused or waiting for you, red on an
 error. Set `NO_COLOR` to turn colours off; terminals without UTF-8 get an
 ASCII frame automatically.
 
+#### Show the status together with the models stored on the printer
+
+```bash
+ pxctl show --tasks
+```
+
+```
+╭────────────────────────────────────────────────╮
+│ default-printlist  (8)                         │
+│   dima-bike (1)                         632 KB │
+│   Body1 (48)                             49 KB │
+│ ▸ Body1 (49)                             49 KB │
+│   hippo                                 2.8 MB │
+│   table-wheel-1                         5.6 MB │
+╰────────────────────────────────────────────────╯
+```
+
+The task the printer currently has selected is marked and highlighted.
+
+#### List the models stored on the printer
+
+```bash
+ pxctl task list
+ pxctl printlist list
+```
+
 #### Discover printer and show it's status continuously
 
 ```bash
@@ -76,6 +102,16 @@ or `--table` for a one-line-per-printer summary.
   pxctl discover --json
  ```
 
+
+#### When discovery finds nothing
+
+Discovery uses a UDP broadcast, which some access points rate-limit or drop
+outright. Every command accepts `--address`, which talks to the printer over
+unicast only and keeps working in that case:
+
+```bash
+ pxctl show --address=192.0.2.10
+```
 
 Make printer starts to beep
 
