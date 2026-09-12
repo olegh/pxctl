@@ -9,6 +9,8 @@ from typing import List, Tuple
 from .utils import NetworkUtils, MagicPicasoConverters
 from .enums import NetPrinterState, NetPrinterStatus, PrinterType
 from .connection import Connection
+from . import tftp
+from .plgx import TaskFile, read_task_file
 from .structs import PrinterState, Printer, Extruder, Task, PrintList
 
 
@@ -273,6 +275,106 @@ class PrinterService:
             if len(record) < record_size:
                 return
             yield record
+
+    # Registration request (0x18) laid out as the slicer sends it:
+    #   0x08  GUID of the task to insert after
+    #   0x18  GUID of the new task, matching the ;TID: in the file
+    #   0x28  task name, 32 bytes
+    #   0x48  format version word, always 02 00
+    #   0x4a  size of the uploaded data
+    #   0x52  GUID of the print list to add it to
+    _REGISTER_REQUEST_SIZE = 98
+    _REGISTER_NAME_SIZE = 32
+    _TASK_FORMAT_VERSION = 2
+
+    def register_task(
+        self,
+        task_id: str,
+        name: str,
+        size_bytes: int,
+        printlist_guid: str,
+        after_task_guid: str = "",
+    ) -> bool:
+        """Adds an uploaded task to a print list.
+
+        An upload alone does not make a task appear: the file is stored under
+        its GUID, and this call is what puts it in the list under a readable
+        name. Returns whether the printer accepted it.
+        """
+        anchor = bytes.fromhex(after_task_guid) if after_task_guid else b"\x00" * 16
+
+        request = bytearray(PrinterService._REGISTER_REQUEST_SIZE)
+        struct.pack_into(
+            "<HHHH", request, 0, 1, 0x18, 0, PrinterService._REGISTER_REQUEST_SIZE
+        )
+        request[0x08:0x18] = anchor.ljust(16, b"\x00")[:16]
+        request[0x18:0x28] = PrinterService._guid_to_bytes(task_id)
+        request[0x28:0x48] = name.encode("cp1251", errors="replace")[
+            : PrinterService._REGISTER_NAME_SIZE
+        ].ljust(PrinterService._REGISTER_NAME_SIZE, b"\x00")
+        struct.pack_into("<H", request, 0x48, PrinterService._TASK_FORMAT_VERSION)
+        struct.pack_into("<I", request, 0x4A, size_bytes)
+        request[0x52:0x62] = bytes.fromhex(printlist_guid).ljust(16, b"\x00")[:16]
+
+        self.__connection.send(bytes(request))
+        reply = self.__connection.recv(PrinterService._LIST_TIMEOUT)
+        if not reply or len(reply) < 12:
+            return False
+        # The reply carries a status word: 1 on success.
+        return struct.unpack("<I", reply[8:12])[0] == 1
+
+    @staticmethod
+    def _guid_to_bytes(task_id: str) -> bytes:
+        """Packs a dashed GUID the way the firmware stores it."""
+        return bytes.fromhex(task_id.replace("-", "")).ljust(16, b"\x00")[:16]
+
+    @staticmethod
+    def upload_task(
+        address: str,
+        path: str,
+        task_id: str | None = None,
+        name: str | None = None,
+        progress=None,
+    ) -> TaskFile:
+        """Uploads a .plgx model and adds it to the printer's print list.
+
+        Two steps: the file goes up over TFTP named after its task GUID, then a
+        registration request puts it in the print list under a readable name.
+        Uploading alone stores the data but leaves nothing visible on the
+        printer.
+
+        Returns the task file that was sent, so a caller can report its id.
+        """
+        task_file = read_task_file(path, task_id)
+        tftp.upload(
+            address,
+            task_file.upload_name,
+            task_file.payload,
+            progress=progress,
+        )
+
+        with Connection(address) as connection:
+            service = PrinterService(connection)
+            printlists = service.get_printlists()
+            if not printlists:
+                raise RuntimeError(
+                    "uploaded, but the printer reported no print list to add the task to"
+                )
+            printlist = printlists[0]
+            # New tasks go after the last one, matching where the slicer puts them.
+            anchor = printlist.tasks[-1].guid if printlist.tasks else ""
+            accepted = service.register_task(
+                task_id=task_file.task_id,
+                name=name or task_file.default_name,
+                size_bytes=len(task_file.payload),
+                printlist_guid=printlist.guid,
+                after_task_guid=anchor,
+            )
+
+        if not accepted:
+            raise RuntimeError("the printer refused to add the task to its print list")
+
+        return task_file
 
     def beep_on(self):
         self.__connection.send(b"\x01\x00\x0e\x00\x00\x00\x08\x00")

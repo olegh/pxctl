@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import argparse
+import json
 import os
 import sys
 import signal
@@ -8,6 +9,7 @@ from time import sleep
 
 from pxctl.notifications import Notifications
 from pxctl.printer_service import Connection, PrinterService
+from pxctl.tftp import TftpError
 from .layout import CardLayout, JsonLayout, TableLayout
 
 cur_dir = os.path.realpath(os.path.dirname(os.path.abspath(__file__)))
@@ -151,6 +153,54 @@ def list_tasks(args):
     layout_service.print_tasks(printlists, state.current_task_file if state else "")
 
 
+def upload_task(args):
+    """Sends a .plgx model to the printer."""
+    if not args.file:
+        print("Specify the file to upload: pxctl task create -f model.plgx", file=sys.stderr)
+        sys.exit(-1)
+
+    if not os.path.isfile(args.file):
+        print(f"No such file: {args.file}", file=sys.stderr)
+        sys.exit(-1)
+
+    address = get_address(args)
+    quiet = args.json
+
+    def show_progress(sent: int, total: int):
+        if quiet or not sys.stderr.isatty():
+            return
+        percent = 100.0 * sent / total if total else 100.0
+        print(f"\rUploading {percent:5.1f}%  ({sent:,}/{total:,} bytes)",
+              end="", file=sys.stderr, flush=True)
+
+    try:
+        task_file = PrinterService.upload_task(
+            address, args.file, task_id=args.task_id, name=args.name,
+            progress=show_progress,
+        )
+    except (TftpError, RuntimeError) as error:
+        if not quiet and sys.stderr.isatty():
+            print(file=sys.stderr)
+        print(f"Upload failed: {error}", file=sys.stderr)
+        sys.exit(-1)
+
+    if not quiet and sys.stderr.isatty():
+        print(file=sys.stderr)
+
+    if args.json:
+        print(json.dumps({
+            "task_id": task_file.task_id,
+            "name": args.name or task_file.default_name,
+            "uploaded_as": task_file.upload_name,
+            "size_bytes": len(task_file.payload),
+            "address": address,
+        }))
+    else:
+        name = args.name or task_file.default_name
+        print(f"Uploaded {os.path.basename(args.file)} "
+              f"({len(task_file.payload):,} bytes) and added it as {name!r}.")
+
+
 def printlist(args):
     if args.operation == "list":
         list_tasks(args)
@@ -161,6 +211,8 @@ def printlist(args):
 def task(args):
     if args.operation == "list":
         list_tasks(args)
+    elif args.operation == "create":
+        upload_task(args)
     else:
         print("Not implemented yet", file=sys.stderr)
 
@@ -299,22 +351,28 @@ def main():
 
     task_parser = subparsers.add_parser(
         "task",
-        help="List the models stored on the printer (create/delete not implemented).",
-        description="Lists the models uploaded to the printer, with their size and "
-                    "which one is currently selected.",
+        help="Upload a model to the printer, or list the models already stored.",
+        description="Uploads a .plgx model to the printer, or lists the models it holds. "
+                    "An upload needs no separate registration: the printer reads the task "
+                    "id from the file header and adds it to the print list itself.",
         epilog="Examples:\n"
                "  pxctl task list\n"
-               "  pxctl task list --json\n"
-               "Only 'list' is implemented; create and delete are not yet supported.",
+               "  pxctl task create -f model.plgx\n"
+               "  pxctl task create -f model.plgx --json\n"
+               "'delete' is not implemented yet.",
         formatter_class=argparse.RawDescriptionHelpFormatter)
     task_parser.add_argument("operation",
-                             help="'list' shows the stored models. 'create' and 'delete' are not implemented yet.",
+                             help="'create' uploads a .plgx file (-f), 'list' shows the stored models. 'delete' is not implemented yet.",
                              nargs="?",
                              choices=("create", "delete", "list")
                              )
-    task_parser.add_argument("-n", "--name", type=str, help="Use the task's name exclusively for deletion purposes.")
+    task_parser.add_argument("-n", "--name", type=str,
+                             help="Name to show in the print list. Defaults to the file name.")
+    task_parser.add_argument("--task-id", type=str,
+                             help="Task GUID to upload under. Defaults to the ;TID: value in the file, "
+                                  "so re-uploading replaces that task instead of adding a duplicate.")
     task_parser.add_argument("-f", "--file", type=str,
-                             help="The file path to the .plgx file, which will be uploaded to the 3D printer, should only be used for creating.")
+                             help="Path to the .plgx file to upload. Required by 'create'.")
     task_parser.add_argument("-p", "--printlist", type=str, help=PRINTLIST_HELP)
     task_parser.add_argument("-a", "--address", type=str, help=ADDRESS_HELP)
     task_parser.add_argument("-j", "--json", help="Output the tasks in JSON format.",

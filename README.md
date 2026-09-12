@@ -59,6 +59,20 @@ ASCII frame automatically.
 
 The task the printer currently has selected is marked and highlighted.
 
+#### Upload a model to the printer
+
+```bash
+ pxctl task create -f model.plgx
+ pxctl task create -f model.plgx --name 'bracket v2'
+```
+
+Shows upload progress and adds the model to the print list, where the slicer
+and the printer's own screen pick it up. The name defaults to the file name.
+
+Re-uploading the same file updates the task it came from rather than creating
+a duplicate, because the task is identified by the GUID in its header. Pass
+`--task-id` to upload under a different GUID and get a separate task.
+
 #### List the models stored on the printer
 
 ```bash
