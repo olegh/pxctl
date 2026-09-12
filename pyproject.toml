@@ -4,17 +4,16 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pxctl"
-version = "0.1.0-rc2"
+version = "0.1.0"
 authors = [
     {name = "github.com/olegh"},
     {name = "github.com/ttwoti"},
 ]
-description = "Command line tool for Picaso3d printers"
+description = "Command line tool to monitor and control Picaso3D printers"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     "tabulate",
-    "twine",
     "netifaces"
 ]
 classifiers = [
