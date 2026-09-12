@@ -2,6 +2,10 @@ from enum import Enum
 
 
 class NetPrinterState(Enum):
+    @classmethod
+    def _missing_(cls, value):
+        return cls.npstIdle
+
     npstPrinting = 1
     npstPaused = 2
     npstIdle = 3
@@ -13,6 +17,10 @@ class NetPrinterState(Enum):
 
 
 class NetPrinterStatus(Enum):
+    @classmethod
+    def _missing_(cls, value):
+        return cls.npsInitialState
+
     npsInitialState = 2147483652
     npsConnectionError = 2147483648
     npsPrintProblem = 1
@@ -25,6 +33,27 @@ class NetPrinterStatus(Enum):
     npsPrintPaused = 8
     npsAdjectiveWarning = 9
     npsUpdateDownload = 10
+
+    @property
+    def description(self) -> str:
+        """Human-readable label, mirroring what the official slicer shows."""
+        return _STATUS_DESCRIPTIONS.get(self, self.name)
+
+
+_STATUS_DESCRIPTIONS = {
+    NetPrinterStatus.npsInitialState: "Initialising",
+    NetPrinterStatus.npsConnectionError: "Connection error",
+    NetPrinterStatus.npsPrintProblem: "Print problem",
+    NetPrinterStatus.npsCriticalError: "Critical error",
+    NetPrinterStatus.npsWaitUser: "Waiting for user",
+    NetPrinterStatus.npsWaitNewTask: "Ready for a new task",
+    NetPrinterStatus.npsService: "Service mode",
+    NetPrinterStatus.npsMainPrint: "Printing",
+    NetPrinterStatus.npsPrintDone: "Print finished",
+    NetPrinterStatus.npsPrintPaused: "Print paused",
+    NetPrinterStatus.npsAdjectiveWarning: "Warning",
+    NetPrinterStatus.npsUpdateDownload: "Downloading update",
+}
 
 
 class PrinterType(Enum):
