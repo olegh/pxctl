@@ -22,10 +22,10 @@ Examples
 ```
 ╭────────────────────────────────────────────────╮
 │ DPX00000000XX00                                │
-│ 192.0.2.10                                  │
+│ 192.0.2.10                                     │
 │                                                │
 │ Printing                                       │
-│ table-wheel-1.plgx                             │
+│ bracket-v2.plgx                                │
 │ ███████████████░░░░░░░░░░░░░░░░░░░  42.7%      │
 │                                                │
 │ 1 157.0 °C             2  46.0 °C              │
@@ -48,11 +48,10 @@ ASCII frame automatically.
 
 ```
 ╭────────────────────────────────────────────────╮
-│ default-printlist  (8)                         │
-│   dima-bike (1)                         632 KB │
-│   Body1 (48)                             49 KB │
-│ ▸ Body1 (49)                             49 KB │
-│   hippo                                 2.8 MB │
+│ default-printlist  (4)                         │
+│ ▸ bracket-v2                            632 KB │
+│   gear-housing                           49 KB │
+│   spool-holder                          2.8 MB │
 │   table-wheel-1                         5.6 MB │
 ╰────────────────────────────────────────────────╯
 ```
