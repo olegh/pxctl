@@ -1,6 +1,7 @@
 import subprocess
 import sys
 
+from .enums import NetPrinterStatus
 from .printer_service import PrinterState
 
 
@@ -14,7 +15,10 @@ class Notifications:
             return
 
         if info:
-            if info.state == "SUCCESS":
+            # The hook fires once the printer reports a finished print. This
+            # used to compare the state enum against the string "SUCCESS",
+            # which never matched, so the hook never ran.
+            if info.status == NetPrinterStatus.npsPrintDone:
                 self.run_success()
                 self.__notified_latch = True
 

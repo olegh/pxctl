@@ -8,7 +8,7 @@ from time import sleep
 
 from pxctl.notifications import Notifications
 from pxctl.printer_service import Connection, PrinterService
-from .layout import JsonLayout, TableLayout
+from .layout import CardLayout, JsonLayout, TableLayout
 
 cur_dir = os.path.realpath(os.path.dirname(os.path.abspath(__file__)))
 SRC_DIR = os.path.realpath(cur_dir)
@@ -25,30 +25,43 @@ def signal_handler(sig, frame):
 signal.signal(signal.SIGINT, signal_handler)
 
 
-def get_address(args) -> str:
-    if args.address:
-        address = args.address
-    else:
-        printers = PrinterService.discover_printers()
-        if len(printers) == 0:
-            print("Printers not found, try set ip address manually", file=sys.stderr)
-            sys.exit(-1)
-        else:
-            address = printers[0].ip_address
+def resolve_printer(args):
+    """Returns (address, Printer|None) for the printer to talk to.
 
-    return address
+    The descriptor carries the serial, nozzle sizes and loaded materials, which
+    only the discovery response reports -- so it is fetched even when an
+    explicit address is given, and simply left out if discovery finds nothing.
+    """
+    printers = PrinterService.discover_printers()
+
+    if args.address:
+        for printer in printers:
+            if printer.ip_address == args.address:
+                return args.address, printer
+        return args.address, None
+
+    if not printers:
+        print("Printers not found, try set ip address manually", file=sys.stderr)
+        sys.exit(-1)
+
+    return printers[0].ip_address, printers[0]
+
+
+def get_address(args) -> str:
+    return resolve_printer(args)[0]
 
 
 def get_layout(args):
     if args.json:
         return JsonLayout()
-    else:
+    if getattr(args, "table", False):
         return TableLayout()
+    return CardLayout()
 
 
 def show(args):
     layout_service = get_layout(args)
-    address = get_address(args)
+    address, printer = resolve_printer(args)
     should_repeat = args.continuous
 
     notifications = Notifications(args.on_success)
@@ -58,7 +71,9 @@ def show(args):
 
         while True:
             optional_info = print_service.get_printing_info()
-            layout_service.print_info(address, optional_info)
+            layout_service.print_info(
+                address, optional_info, printer, clear=should_repeat
+            )
             notifications.update_state(optional_info)
 
             if not should_repeat:
@@ -67,10 +82,28 @@ def show(args):
             sleep(0.6)
 
 
+def collect_states(printers) -> dict:
+    """Queries each discovered printer so the cards show live state."""
+    states = {}
+    for printer in printers:
+        with Connection(printer.ip_address) as connection:
+            states[printer.ip_address] = PrinterService(connection).get_printing_info()
+    return states
+
+
 def discover(args):
     layout_service = get_layout(args)
-    printers = PrinterService.discover_printers()
-    layout_service.print_discover(printers)
+    should_repeat = getattr(args, "continuous", False)
+
+    while True:
+        printers = PrinterService.discover_printers()
+        states = collect_states(printers) if not args.json else None
+        layout_service.print_discover(printers, states, clear=should_repeat)
+
+        if not should_repeat:
+            break
+
+        sleep(0.6)
 
 
 def beep_on(address):
@@ -118,6 +151,8 @@ def main():
     show_parser.add_argument("-j", "--json", help="Output the information of printer state in JSON format.",
                              action="store_true")
     show_parser.add_argument("-a", "--address", type=str, help=ADDRESS_HELP)
+    show_parser.add_argument("-t", "--table", help="Output the printer state as a plain table instead of a card.",
+                             action="store_true")
     show_parser.add_argument("-c", "--continuous",
                              help="Continuously output the current state of the 3D printer to the standard output.",
                              action="store_true")
@@ -138,6 +173,11 @@ def main():
     discover_parser = subparsers.add_parser("discover",
                                             help="Search for printers connected to the local network. '%(prog)s discover -h' for more details")
     discover_parser.add_argument("-j", "--json", help="Output the results of the printer discovery in JSON format.",
+                                 action="store_true")
+    discover_parser.add_argument("-t", "--table", help="Output the discovered printers as a plain table instead of cards.",
+                                 action="store_true")
+    discover_parser.add_argument("-c", "--continuous",
+                                 help="Continuously re-scan the network and redraw the discovered printers.",
                                  action="store_true")
     discover_parser.set_defaults(mode="discover")
 
