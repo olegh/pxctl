@@ -1,0 +1,19 @@
+.gitignore
+  s_ad964084590a0e::t_a95f506a0e3d23 164-167
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "762bd80ea22a40f4f1264b04ebe261bf426bc719",
+  "prompts": {},
+  "sessions": {
+    "s_ad964084590a0e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e30acc3f-e2bc-4e1d-8a24-e03c3f17603b",
+        "model": "claude-opus-5"
+      },
+      "human_author": "oikhreti <oikhreti@mts.ru>"
+    }
+  }
+}
