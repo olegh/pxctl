@@ -1,0 +1,28 @@
+src/pxctl/tftp.py
+  s_ad964084590a0e::t_f6b347ccbcf71f 1-136
+  s_ad964084590a0e::t_970b453ca81b32 137-173
+README.md
+  s_ad964084590a0e::t_957c92b41f2c5c 62-75
+src/pxcli/main.py
+  s_ad964084590a0e::t_5c00c88993edb9 4,12,156-203,214-215,354-357,360-362,365,369-373,375
+src/pxctl/plgx.py
+  s_ad964084590a0e::t_400ae0b5a15a97 1-69
+src/pxctl/printer_service.py
+  s_ad964084590a0e::t_7f69279a4ef788 12-13,279-378
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "ad62771b937c835abc4fa37bc9d801731e282c01",
+  "prompts": {},
+  "sessions": {
+    "s_ad964084590a0e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e30acc3f-e2bc-4e1d-8a24-e03c3f17603b",
+        "model": "claude-opus-5"
+      },
+      "human_author": "oikhreti <oikhreti@mts.ru>"
+    }
+  }
+}
