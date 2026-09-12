@@ -201,6 +201,33 @@ def upload_task(args):
               f"({len(task_file.payload):,} bytes) and added it as {name!r}.")
 
 
+def delete_task(args):
+    """Removes a task from the printer, addressed by name or GUID."""
+    if not args.name:
+        print("Specify what to delete: pxctl task delete -n 'model name'", file=sys.stderr)
+        sys.exit(-1)
+
+    address = get_address(args)
+
+    with Connection(address) as connection:
+        service = PrinterService(connection)
+        task = service.find_task(args.name)
+        if task is None:
+            print(f"No task named {args.name!r} on the printer. "
+                  f"Run 'pxctl task list' to see what is stored.", file=sys.stderr)
+            sys.exit(-1)
+        accepted = service.delete_task(task.guid)
+
+    if not accepted:
+        print(f"The printer refused to delete {task.name!r}.", file=sys.stderr)
+        sys.exit(-1)
+
+    if args.json:
+        print(json.dumps({"deleted": task.name, "task_id": task.guid}))
+    else:
+        print(f"Deleted {task.name!r}.")
+
+
 def printlist(args):
     if args.operation == "list":
         list_tasks(args)
@@ -213,12 +240,58 @@ def task(args):
         list_tasks(args)
     elif args.operation == "create":
         upload_task(args)
+    elif args.operation == "delete":
+        delete_task(args)
+
+
+def start_print(args):
+    """Starts printing a task that is already on the printer."""
+    if not args.name and not args.file:
+        print("Specify what to print: pxctl execute start -n 'model name'", file=sys.stderr)
+        sys.exit(-1)
+
+    address = get_address(args)
+
+    # Uploading first is a convenience: print straight from a sliced file.
+    if args.file:
+        try:
+            task_file = PrinterService.upload_task(
+                address, args.file, name=args.name
+            )
+        except (TftpError, RuntimeError) as error:
+            print(f"Upload failed: {error}", file=sys.stderr)
+            sys.exit(-1)
+        target_name = args.name or task_file.default_name
     else:
-        print("Not implemented yet", file=sys.stderr)
+        target_name = args.name
+
+    with Connection(address) as connection:
+        service = PrinterService(connection)
+        task = service.find_task(target_name)
+        if task is None:
+            print(f"No task named {target_name!r} on the printer. "
+                  f"Run 'pxctl task list' to see what is stored.", file=sys.stderr)
+            sys.exit(-1)
+        accepted = service.start_task(task.guid)
+
+    if not accepted:
+        print(f"The printer refused to start {task.name!r}. "
+              f"Check 'pxctl show' -- it may be busy or waiting for the user.",
+              file=sys.stderr)
+        sys.exit(-1)
+
+    if args.json:
+        print(json.dumps({"started": task.name, "task_id": task.guid}))
+    else:
+        print(f"Started printing {task.name!r}.")
 
 
 def execute(args):
-    print("Not implemented yet", file=sys.stderr)
+    if args.operation == "start":
+        start_print(args)
+    else:
+        print(f"'{args.operation}' is not implemented yet", file=sys.stderr)
+        sys.exit(-1)
 
 
 EPILOG = """\
@@ -227,6 +300,7 @@ Typical use:
   pxctl show --tasks               status plus the models stored on the printer
   pxctl show --continuous          redraw the card until interrupted
   pxctl task list                  list the stored models
+  pxctl execute start -n NAME      print a model already on the printer
   pxctl discover                   find every printer on the LAN
   pxctl show --json                machine-readable output (every command takes --json)
 
@@ -351,23 +425,26 @@ def main():
 
     task_parser = subparsers.add_parser(
         "task",
-        help="Upload a model to the printer, or list the models already stored.",
-        description="Uploads a .plgx model to the printer, or lists the models it holds. "
+        help="Upload, list or delete the models stored on the printer.",
+        description="Uploads a .plgx model to the printer, lists the models it holds, or "
+                    "deletes one. "
                     "An upload needs no separate registration: the printer reads the task "
                     "id from the file header and adds it to the print list itself.",
         epilog="Examples:\n"
                "  pxctl task list\n"
                "  pxctl task create -f model.plgx\n"
                "  pxctl task create -f model.plgx --json\n"
-               "'delete' is not implemented yet.",
+               "  pxctl task delete -n 'bracket v2'",
         formatter_class=argparse.RawDescriptionHelpFormatter)
     task_parser.add_argument("operation",
-                             help="'create' uploads a .plgx file (-f), 'list' shows the stored models. 'delete' is not implemented yet.",
+                             help="'create' uploads a .plgx file (-f), 'list' shows the stored models, "
+                                  "'delete' removes one by name (-n).",
                              nargs="?",
                              choices=("create", "delete", "list")
                              )
     task_parser.add_argument("-n", "--name", type=str,
-                             help="Name to show in the print list. Defaults to the file name.")
+                             help="For 'create', the name to show in the print list (defaults to the "
+                                  "file name). For 'delete', the name of the task to remove.")
     task_parser.add_argument("--task-id", type=str,
                              help="Task GUID to upload under. Defaults to the ;TID: value in the file, "
                                   "so re-uploading replaces that task instead of adding a duplicate.")
@@ -383,19 +460,27 @@ def main():
 
     execute_parser = subparsers.add_parser(
         "execute", aliases=["ex"],
-        help="Start, pause or resume a print (not implemented yet).",
-        description="Starts, pauses or resumes a print job. Not implemented yet.",
+        help="Start printing a model that is on the printer.",
+        description="Starts printing a task stored on the printer, optionally uploading it first. "
+                    "Pause and resume are not implemented yet.",
+        epilog="Examples:\n"
+               "  pxctl execute start -n 'bracket v2'\n"
+               "  pxctl ex start -f model.plgx\n"
+               "The printer must be idle and ready; it refuses to start otherwise.",
         formatter_class=argparse.RawDescriptionHelpFormatter)
     execute_parser.add_argument("operation",
-                                help="Initiate printing using the NAME from the PRINTLIST or add a new one from FILE to PRINTLIST.\
-                           Otherwise pause or resume the current task. Example: 'pxctl ex start -f model.plgx",
+                                help="'start' prints a stored task by name (-n), or uploads FILE (-f) and prints it. "
+                                     "'pause' and 'resume' are not implemented yet.",
                                 nargs="?",
                                 choices=("start", "pause", "resume"))
-    execute_parser.add_argument("-n", "--name", type=str, help="Use the task's name exclusively for start purposes.")
+    execute_parser.add_argument("-n", "--name", type=str,
+                                help="Name of the task to print. With -f, the name to store it under.")
     execute_parser.add_argument("-f", "--file", type=str,
-                                help="Transfer the task from FILE to PRINTLIST. Exclusively for start purposes.")
+                                help="Upload this .plgx first, then print it.")
     execute_parser.add_argument("-p", "--printlist", type=str, help=PRINTLIST_HELP)
     execute_parser.add_argument("-a", "--address", type=str, help=ADDRESS_HELP)
+    execute_parser.add_argument("-j", "--json", help="Output the result in JSON format.",
+                                action="store_true")
     execute_parser.set_defaults(mode="execute")
     args = parser.parse_args()
 

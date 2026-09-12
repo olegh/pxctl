@@ -72,6 +72,17 @@ Re-uploading the same file updates the task it came from rather than creating
 a duplicate, because the task is identified by the GUID in its header. Pass
 `--task-id` to upload under a different GUID and get a separate task.
 
+#### Print a model, or remove one
+
+```bash
+ pxctl execute start -n 'bracket v2'
+ pxctl ex start -f model.plgx          # upload, then print it
+ pxctl task delete -n 'bracket v2'
+```
+
+The printer must be idle to start a print; it refuses otherwise rather than
+interrupting what it is doing.
+
 #### List the models stored on the printer
 
 ```bash

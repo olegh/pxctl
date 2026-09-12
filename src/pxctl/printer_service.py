@@ -325,7 +325,7 @@ class PrinterService:
 
     @staticmethod
     def _guid_to_bytes(task_id: str) -> bytes:
-        """Packs a dashed GUID the way the firmware stores it."""
+        """Packs a GUID the way the firmware stores it, dashed or not."""
         return bytes.fromhex(task_id.replace("-", "")).ljust(16, b"\x00")[:16]
 
     @staticmethod
@@ -375,6 +375,51 @@ class PrinterService:
             raise RuntimeError("the printer refused to add the task to its print list")
 
         return task_file
+
+    # Delete is a bare GUID: an 8-byte header followed by the task identifier.
+    _DELETE_REQUEST_SIZE = 24
+
+    def delete_task(self, task_guid: str) -> bool:
+        """Removes a task from the printer. Returns whether it was accepted."""
+        request = bytearray(PrinterService._DELETE_REQUEST_SIZE)
+        struct.pack_into(
+            "<HHHH", request, 0, 1, 0x05, 0, PrinterService._DELETE_REQUEST_SIZE
+        )
+        request[0x08:0x18] = PrinterService._guid_to_bytes(task_guid)
+
+        self.__connection.send(bytes(request))
+        reply = self.__connection.recv(PrinterService._LIST_TIMEOUT)
+        if not reply or len(reply) < 12:
+            return False
+        return struct.unpack("<I", reply[8:12])[0] == 1
+
+    def find_task(self, name: str) -> Task | None:
+        """Looks up a stored task by the name shown in the print list."""
+        for task in self.get_tasks():
+            if task.name == name:
+                return task
+        return None
+
+    # Start, like delete, is an 8-byte header followed by the task GUID.
+    _START_REQUEST_SIZE = 24
+
+    def start_task(self, task_guid: str) -> bool:
+        """Starts printing a task already stored on the printer.
+
+        Returns whether the printer accepted the request. It will refuse when
+        it is not ready -- already printing, or waiting on the user.
+        """
+        request = bytearray(PrinterService._START_REQUEST_SIZE)
+        struct.pack_into(
+            "<HHHH", request, 0, 1, 0x07, 0, PrinterService._START_REQUEST_SIZE
+        )
+        request[0x08:0x18] = PrinterService._guid_to_bytes(task_guid)
+
+        self.__connection.send(bytes(request))
+        reply = self.__connection.recv(PrinterService._LIST_TIMEOUT)
+        if not reply or len(reply) < 12:
+            return False
+        return struct.unpack("<I", reply[8:12])[0] == 1
 
     def beep_on(self):
         self.__connection.send(b"\x01\x00\x0e\x00\x00\x00\x08\x00")

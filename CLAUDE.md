@@ -55,6 +55,8 @@ little-endian. Responses repeat the header and follow it with a payload.
 |---------|---------|
 | `0x01` | printing info: state, status, temperatures, current task, progress |
 | `0x02` | print lists |
+| `0x05` | delete a task (body: task GUID) |
+| `0x07` | start printing a task (body: task GUID) |
 | `0x0c` | printer descriptor: serial, MAC, extruders (also sent after discovery) |
 | `0x0e` / `0x0f` | beep on / off |
 | `0x11` | tasks stored on the printer |
@@ -63,7 +65,14 @@ little-endian. Responses repeat the header and follow it with a payload.
 
 Commands not listed here answer with a bare 12-byte header. `0x13` is sent by
 the official slicer immediately before an upload and its purpose is unknown;
-uploads work without it. `0x20` returns the material catalogue, unused so far.
+uploads work without it. `0x19` carries print parameters and is sent before a
+start, which also succeeds without it. `0x20` returns the material catalogue,
+unused so far. Pause and resume have not been identified.
+
+`0x05` and `0x07` share the simplest body there is: the 8-byte header followed
+by a 16-byte task GUID, 24 bytes in total. Both answer with a status word at
+offset 8, where `1` means accepted. The printer refuses a start when it is not
+idle, so a failed start is normal operation rather than an error to retry.
 
 Unknown command ids are not harmless to probe blindly: these are writes to
 firmware. Sweeping the space found the listing commands, but anything that
@@ -164,8 +173,14 @@ unreachable paths -- `pxctl show --address 192.0.2.1` should report
 `NOT CONNECTED` rather than crash.
 
 For protocol work, capture the official slicer talking to the printer and
-compare. That is how `0x18` was found: it is the only control request with a
-body, and it is invisible if you filter on the 8-byte request shape.
+compare. Filtering the capture down to *requests with a body* is what makes
+commands findable: everything else on the control channel is a bare 8-byte
+poll repeating a few times a second. `0x18`, `0x05` and `0x07` were all found
+this way.
+
+Take care when probing unknown ids by hand: those probes land in your own
+captures and look like discoveries. Identify a command by triggering it from
+the official client and matching the GUID in its body against a known task.
 
 ## Conventions
 
