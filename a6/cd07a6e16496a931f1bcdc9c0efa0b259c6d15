@@ -1,0 +1,34 @@
+src/pxcli/card.py
+  s_ad964084590a0e::t_5cdef59e2f0b65 1-188
+  s_ad964084590a0e::t_7c5d14acc3ae97 189-191
+README.md
+  s_ad964084590a0e::t_15950bfd48a516 16-42,49-54,63-72
+src/pxcli/layout.py
+  s_ad964084590a0e::t_761b963e4fb84a 8-47,50-56,60,73,83,85-87,89-95,105-107,117-123,129-130,135,138-147,154,156-161,170,173-180,184
+src/pxcli/main.py
+  s_ad964084590a0e::t_60ea7dc615b336 11,28-36,38-41,43-51,57,59,64,74-76,85-93,96-106,154-155,177-181
+src/pxctl/enums.py
+  s_ad964084590a0e::t_af9f03473a51a3 5-8,20-23,37-57
+src/pxctl/notifications.py
+  s_ad964084590a0e::t_dc4876cc76f21f 4,18-21
+src/pxctl/printer_service.py
+  s_ad964084590a0e::t_6d67901d088c68 9,11,20-27,36,46,50,61-68,71-91,96-101,103,114-116,131,134-137,143-181
+src/pxctl/structs.py
+  s_ad964084590a0e::t_0aaa38d4da561e 1-2,4-18,24,44-46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "a6cd07a6e16496a931f1bcdc9c0efa0b259c6d15",
+  "prompts": {},
+  "sessions": {
+    "s_ad964084590a0e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e30acc3f-e2bc-4e1d-8a24-e03c3f17603b",
+        "model": "claude-opus-5"
+      },
+      "human_author": "oikhreti <oikhreti@mts.ru>"
+    }
+  }
+}
