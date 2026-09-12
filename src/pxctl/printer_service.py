@@ -421,6 +421,26 @@ class PrinterService:
             return False
         return struct.unpack("<I", reply[8:12])[0] == 1
 
+    def pause_print(self) -> bool:
+        """Pauses the running print.
+
+        The printer takes a moment to reach a safe spot in the layer before it
+        actually stops, so the state does not change the instant this returns.
+        """
+        return self.__simple_command(0x09)
+
+    def resume_print(self) -> bool:
+        """Resumes a paused print."""
+        return self.__simple_command(0x0B)
+
+    def __simple_command(self, command_id: int) -> bool:
+        """Sends a request that carries no body and reads its status word."""
+        self.__connection.send(struct.pack("<HHHH", 1, command_id, 0, 8))
+        reply = self.__connection.recv(PrinterService._LIST_TIMEOUT)
+        if not reply or len(reply) < 12:
+            return False
+        return struct.unpack("<I", reply[8:12])[0] == 1
+
     def beep_on(self):
         self.__connection.send(b"\x01\x00\x0e\x00\x00\x00\x08\x00")
         resp = self.__connection.recv()

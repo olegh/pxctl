@@ -77,11 +77,15 @@ a duplicate, because the task is identified by the GUID in its header. Pass
 ```bash
  pxctl execute start -n 'bracket v2'
  pxctl ex start -f model.plgx          # upload, then print it
+ pxctl ex pause
+ pxctl ex resume
  pxctl task delete -n 'bracket v2'
 ```
 
 The printer must be idle to start a print; it refuses otherwise rather than
-interrupting what it is doing.
+interrupting what it is doing. A pause takes effect once the printer reaches a
+safe point in the layer, so the state shown by `pxctl show` changes a moment
+after the command is accepted.
 
 #### List the models stored on the printer
 

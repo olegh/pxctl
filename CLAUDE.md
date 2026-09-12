@@ -57,6 +57,8 @@ little-endian. Responses repeat the header and follow it with a payload.
 | `0x02` | print lists |
 | `0x05` | delete a task (body: task GUID) |
 | `0x07` | start printing a task (body: task GUID) |
+| `0x09` | pause the running print |
+| `0x0b` | resume a paused print |
 | `0x0c` | printer descriptor: serial, MAC, extruders (also sent after discovery) |
 | `0x0e` / `0x0f` | beep on / off |
 | `0x11` | tasks stored on the printer |
@@ -66,13 +68,21 @@ little-endian. Responses repeat the header and follow it with a payload.
 Commands not listed here answer with a bare 12-byte header. `0x13` is sent by
 the official slicer immediately before an upload and its purpose is unknown;
 uploads work without it. `0x19` carries print parameters and is sent before a
-start, which also succeeds without it. `0x20` returns the material catalogue,
-unused so far. Pause and resume have not been identified.
+start and before a resume, both of which succeed without it. `0x20` returns
+the material catalogue, unused so far.
 
 `0x05` and `0x07` share the simplest body there is: the 8-byte header followed
-by a 16-byte task GUID, 24 bytes in total. Both answer with a status word at
-offset 8, where `1` means accepted. The printer refuses a start when it is not
-idle, so a failed start is normal operation rather than an error to retry.
+by a 16-byte task GUID, 24 bytes in total. `0x09` and `0x0b` need no body at
+all. All four answer with a status word at offset 8, where `1` means accepted.
+
+A refused command is normal operation rather than an error to retry: the
+printer declines a start when it is not idle instead of interrupting itself.
+
+Note that accepted is not the same as done. A pause is acknowledged
+immediately but the printer keeps moving until it reaches a safe point in the
+layer, so `NetPrinterState` stays `npstPrinting` for a moment. A resume goes
+through `npstPrepareForPrinting` before printing again. Poll the state rather
+than assuming the transition happened.
 
 Unknown command ids are not harmless to probe blindly: these are writes to
 firmware. Sweeping the space found the listing commands, but anything that

@@ -286,12 +286,36 @@ def start_print(args):
         print(f"Started printing {task.name!r}.")
 
 
+def pause_or_resume(args):
+    """Pauses or resumes the running print."""
+    address = get_address(args)
+    pausing = args.operation == "pause"
+
+    with Connection(address) as connection:
+        service = PrinterService(connection)
+        accepted = service.pause_print() if pausing else service.resume_print()
+
+    if not accepted:
+        action = "pause" if pausing else "resume"
+        print(f"The printer refused to {action}. Check 'pxctl show' -- "
+              f"{'it may not be printing' if pausing else 'there may be nothing paused'}.",
+              file=sys.stderr)
+        sys.exit(-1)
+
+    if args.json:
+        print(json.dumps({"operation": args.operation, "accepted": True}))
+    elif pausing:
+        # The firmware finishes the current move first, so the state lags.
+        print("Pause requested. The printer stops once it reaches a safe point.")
+    else:
+        print("Resumed.")
+
+
 def execute(args):
     if args.operation == "start":
         start_print(args)
     else:
-        print(f"'{args.operation}' is not implemented yet", file=sys.stderr)
-        sys.exit(-1)
+        pause_or_resume(args)
 
 
 EPILOG = """\
@@ -460,17 +484,21 @@ def main():
 
     execute_parser = subparsers.add_parser(
         "execute", aliases=["ex"],
-        help="Start printing a model that is on the printer.",
-        description="Starts printing a task stored on the printer, optionally uploading it first. "
-                    "Pause and resume are not implemented yet.",
+        help="Start, pause or resume a print.",
+        description="Starts printing a task stored on the printer (optionally uploading it "
+                    "first), or pauses and resumes the running print.",
         epilog="Examples:\n"
                "  pxctl execute start -n 'bracket v2'\n"
                "  pxctl ex start -f model.plgx\n"
-               "The printer must be idle and ready; it refuses to start otherwise.",
+               "  pxctl ex pause\n"
+               "  pxctl ex resume\n"
+               "Starting needs an idle printer; it refuses rather than interrupting a print. "
+               "A pause takes effect once the printer reaches a safe point, so the state "
+               "reported by 'pxctl show' changes a moment later.",
         formatter_class=argparse.RawDescriptionHelpFormatter)
     execute_parser.add_argument("operation",
-                                help="'start' prints a stored task by name (-n), or uploads FILE (-f) and prints it. "
-                                     "'pause' and 'resume' are not implemented yet.",
+                                help="'start' prints a stored task by name (-n), or uploads FILE (-f) and "
+                                     "prints it. 'pause' and 'resume' control the running print.",
                                 nargs="?",
                                 choices=("start", "pause", "resume"))
     execute_parser.add_argument("-n", "--name", type=str,
